@@ -1,0 +1,97 @@
+service: sls-kotlin
+
+frameworkVersion: '2'
+
+provider:
+  name: aws
+  runtime: java11
+  lambdaHashingVersion: 20201221
+
+# you can overwrite defaults here
+  stage: dev
+  region: us-east-1
+  environment:
+    TEXT_TABLE: "TextContent"
+  iamRoleStatements:
+    - Effect: "Allow"
+      Action:
+        - dynamodb:Query
+        - dynamodb:Scan
+        - dynamodb:GetItem
+        - dynamodb:PutItem
+      Resource: "*"
+
+# you can add packaging information here
+package:
+  artifact: build/libs/sls-kotlin-dev-all.jar
+
+functions:
+  example:
+    handler: com.serverless.handlers.ExampleHandler
+    events:
+      - httpApi:
+          path: /example
+          method: post
+
+  create:
+    handler: com.serverless.handlers.CreateHandler
+    events:
+      - httpApi:
+          path: /create
+          method: post
+
+  list:
+    handler: com.serverless.handlers.ListHandler
+    events:
+      - httpApi:
+          path: /list
+          method: get
+  get:
+    handler: com.serverless.handlers.GetHandler
+    events:
+      - httpApi:
+          path: /get/{id}
+          method: get
+
+  delete:
+    handler: com.serverless.handlers.DeleteHandler
+    events:
+      - httpApi:
+          path: /delete/{id}
+          method: delete
+
+resources:
+  Resources:
+    TextDynamoDbTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:provider.environment.TEXT_TABLE}
+        AttributeDefinitions:
+          -
+            AttributeName: "Id"
+            AttributeType: "S"
+        KeySchema:
+          - AttributeName: "Id"
+            KeyType: "HASH"
+        StreamSpecification:
+          StreamViewType: "NEW_AND_OLD_IMAGES"
+        ProvisionedThroughput:
+          ReadCapacityUnits: 1
+          WriteCapacityUnits: 1
+
+custom:
+  dynamodb:
+    stages:
+      - dev
+    start:
+      migrate: true
+      seed: true
+
+    seed:
+      domain:
+        sources:
+          - table: ${self:provider.environment.TEXT_TABLE}
+            sources: [./seed.json]
+
+plugins:
+  - serverless-dynamodb-local

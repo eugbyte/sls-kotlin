@@ -1,0 +1,4 @@
+build
+.dynamodb
+.gradle
+.idea
